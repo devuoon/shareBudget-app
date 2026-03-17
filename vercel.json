@@ -1,6 +1,61 @@
-{
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ]
-}
+# 📒 공유 가계부 v2 — Notion 백엔드 버전
+
+## 이전 버전과 차이점
+| | v1 (이전) | v2 (이번) |
+|---|---|---|
+| 데이터 저장 | 브라우저 localStorage | **Notion DB** |
+| 다른 기기에서 | ❌ 안 보임 | ✅ 실시간 |
+| 친구 데이터 | ❌ 공유 불가 | ✅ 실시간 공유 |
+| 데이터 유실 위험 | 있음 | 없음 |
+
+---
+
+## 파일 구조
+```
+budget-app-v2/
+├── index.html
+├── vercel.json
+└── api/
+    ├── tx-save.js      ← 거래 저장
+    ├── tx-load.js      ← 거래 불러오기
+    ├── tx-delete.js    ← 거래 삭제
+    └── roast.js        ← AI 질타
+```
+
+---
+
+## 🚀 배포 방법
+
+### 1단계 — GitHub에 올리기
+기존 레포에 이 파일들로 **덮어쓰기** (또는 새 레포 생성)
+- `index.html` → 루트
+- `vercel.json` → 루트
+- `api/tx-save.js` → api 폴더
+- `api/tx-load.js` → api 폴더
+- `api/tx-delete.js` → api 폴더
+- `api/roast.js` → api 폴더
+
+### 2단계 — Notion Integration Token 발급
+1. https://www.notion.so/my-integrations 접속
+2. **New integration** 클릭
+3. 이름: `가계부앱` 입력
+4. **Submit** → **Internal Integration Token** 복사 (`secret_...` 형태)
+5. **중요**: 가계부_거래내역 DB 페이지에서
+   → 우측 상단 `...` → **Connections** → 방금 만든 integration 추가
+
+### 3단계 — Vercel 환경변수 2개 설정
+Vercel → Settings → Environment Variables:
+
+| Key | Value |
+|---|---|
+| `NOTION_TOKEN` | `secret_xxxxxxxx...` (Integration Token) |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` (AI 질타용) |
+
+### 4단계 — Redeploy
+Deployments → 최신 건 → `...` → Redeploy
+
+---
+
+## 연결된 Notion DB
+- 거래내역: https://www.notion.so/e10dffa0f872481b8a26e6027f40e279
+- 예산설정: https://www.notion.so/bbd527c11aaa4fd19446de77c2a71cb0

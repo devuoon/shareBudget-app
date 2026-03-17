@@ -1,66 +1,726 @@
-# 📒 공유 가계부 — Vercel 배포 가이드
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>📒 공유 가계부</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:#f7f7f5;color:#1a1a1a;min-height:100vh;}
+.wrap{max-width:480px;margin:0 auto;padding:1rem 1rem 4rem;}
+.scr{display:none;padding:.8rem 0;}.scr.on{display:block;}
+.tabs{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap;}
+.tab{background:none;border:1px solid #e2e2de;border-radius:8px;padding:6px 11px;font-size:12px;cursor:pointer;color:#888;font-family:inherit;}
+.tab.on{background:#efefeb;color:#1a1a1a;font-weight:500;border-color:#ccc;}
+.tab.roast-tab{border-color:#f0a09055;color:#c0392b;}
+.pane{display:none;}.pane.on{display:block;}
+.card{background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:13px 15px;margin-bottom:9px;}
+label{font-size:11px;color:#888;display:block;margin-bottom:3px;}
+input,select{width:100%;border:1px solid #e2e2de;border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;color:#1a1a1a;outline:none;font-family:inherit;}
+input:focus,select:focus{border-color:#aaa;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.btn{width:100%;padding:10px;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;background:#1a1a1a;color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn:hover:not(:disabled){opacity:.88;}
+.sm{background:none;border:1px solid #ccc;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;color:#1a1a1a;font-family:inherit;}
+.sm:hover{background:#f0f0ec;}
+.ttgl{display:flex;gap:6px;margin-bottom:11px;}
+.tbtn{flex:1;padding:7px;border:1px solid #e2e2de;border-radius:8px;font-size:13px;cursor:pointer;background:none;color:#888;font-family:inherit;}
+.tbtn.E.on{background:#FCEBEB;color:#A32D2D;border-color:#E24B4A;}
+.tbtn.I.on{background:#EAF3DE;color:#3B6D11;border-color:#97C459;}
+.mets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:13px;}
+.met{background:#f4f4f0;border-radius:8px;padding:9px 11px;}
+.ml{font-size:10px;color:#888;margin-bottom:2px;}
+.mv{font-size:15px;font-weight:500;color:#1a1a1a;}
+.mv.inc{color:#3B6D11;}.mv.exp{color:#A32D2D;}.mv.pos{color:#185FA5;}.mv.neg{color:#A32D2D;}
+.tx{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #e8e8e4;border-radius:8px;margin-bottom:4px;background:#fff;}
+.txic{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.txin{flex:1;min-width:0;}
+.txn{font-size:12px;font-weight:500;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.txm{font-size:10px;color:#888;}
+.txa{font-size:12px;font-weight:500;flex-shrink:0;}
+.txa.income{color:#3B6D11;}.txa.expense{color:#A32D2D;}
+.del{background:none;border:none;cursor:pointer;color:#bbb;font-size:11px;padding:2px 4px;flex-shrink:0;}
+.del:hover{color:#E24B4A;}
+.rb{font-size:10px;padding:2px 5px;border-radius:20px;background:#f0f0ec;color:#888;flex-shrink:0;}
+.bw{width:100%;height:5px;border-radius:3px;background:#e8e8e4;overflow:hidden;}
+.bf{height:100%;border-radius:3px;}
+.sec{font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.07em;margin:12px 0 7px;}
+.mc{border:1px solid #e8e8e4;border-radius:12px;overflow:hidden;margin-bottom:7px;}
+.mh{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;background:#fff;user-select:none;}
+.mh:hover{background:#f8f8f6;}
+.mb{display:none;border-top:1px solid #f0f0ec;padding:9px 11px;background:#fafaf8;}
+.mb.on{display:block;}
+.ava{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
+.mava{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;}
+.pill{display:inline-flex;align-items:center;gap:5px;background:#efefeb;border-radius:20px;padding:3px 10px 3px 4px;font-size:12px;}
+.mnav{display:flex;align-items:center;gap:5px;}
+.mnav button{background:none;border:1px solid #e2e2de;border-radius:8px;padding:3px 9px;font-size:13px;cursor:pointer;color:#888;font-family:inherit;}
+.mnav button:hover{background:#f0f0ec;}
+.mlbl{font-size:12px;font-weight:500;color:#1a1a1a;min-width:68px;text-align:center;}
+.roastbox{background:#0d0d0d;color:#f0f0f0;border-radius:12px;border-top-left-radius:4px;padding:14px 16px;font-size:13px;line-height:1.8;margin-top:26px;position:relative;}
+.roastbox::before{content:'🤖';position:absolute;top:-23px;left:0;font-size:20px;}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #e0e0dc;border-top-color:#1a1a1a;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:8px 16px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;z-index:99;}
+.toast.on{opacity:1;}
+.tip{background:#f4f4f0;border-radius:8px;padding:9px 12px;font-size:12px;color:#666;line-height:1.65;margin-bottom:11px;}
+.tip b{color:#1a1a1a;font-weight:500;}
+.hmem{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #e8e8e4;border-radius:8px;margin-bottom:5px;cursor:pointer;background:#fff;}
+.hmem:hover{background:#f8f8f6;}
+.hmem.sel{border-color:#999;background:#f4f4f0;}
+/* 로딩 오버레이 */
+.loading{display:none;position:fixed;inset:0;background:rgba(247,247,245,.85);z-index:50;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-size:13px;color:#888;}
+.loading.on{display:flex;}
+.loading .spin{width:20px;height:20px;border-width:3px;}
+/* Notion 배지 */
+.notion-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#888;background:#f0f0ec;padding:3px 8px;border-radius:12px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="toast" class="toast"></div>
+<div id="loading" class="loading"><span class="spin"></span><span id="loadingMsg">불러오는 중...</span></div>
 
-## 파일 구조
-```
-budget-app/
-├── index.html        ← 앱 전체 (프론트엔드)
-├── api/
-│   └── roast.js      ← AI 질타 서버리스 함수
-├── vercel.json       ← Vercel 설정
-└── README.md
-```
+<!-- 홈: 멤버 선택 -->
+<div id="sHome" class="scr on">
+  <div style="max-width:300px;margin:28px auto;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:36px;margin-bottom:8px;">📒</div>
+      <div style="font-size:17px;font-weight:600;margin-bottom:4px;">공유 가계부</div>
+      <div style="font-size:12px;color:#888;margin-bottom:6px;">이름을 눌러 선택하세요</div>
+      <div class="notion-badge">⚡ Notion에 실시간 저장</div>
+    </div>
+    <div class="sec">멤버</div>
+    <div id="memList"></div>
+    <div class="sec" style="margin-top:16px;">새 멤버 추가</div>
+    <div style="display:flex;gap:7px;">
+      <input type="text" id="nickIn" placeholder="닉네임 입력" maxlength="20" onkeydown="if(event.key==='Enter')addMem()"/>
+      <button class="sm" onclick="addMem()" style="white-space:nowrap;">+ 추가</button>
+    </div>
+    <button class="btn" id="startBtn" onclick="start()" style="margin-top:16px;opacity:.4;" disabled>
+      시작하기 →
+    </button>
+  </div>
+</div>
 
----
+<!-- 메인 앱 -->
+<div id="sMain" class="scr">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;">
+    <span id="myPill"></span>
+    <div style="display:flex;align-items:center;gap:7px;">
+      <div class="mnav">
+        <button onclick="chM(-1)">‹</button>
+        <span class="mlbl" id="mlbl"></span>
+        <button onclick="chM(1)">›</button>
+      </div>
+      <button class="sm" onclick="goHome()">← 목록</button>
+    </div>
+  </div>
 
-## 🚀 배포 방법 (5단계, 10분이면 완료)
+  <div class="tabs">
+    <button class="tab on" onclick="sw('my',this)">내 가계부</button>
+    <button class="tab" onclick="sw('members',this)">멤버 보기</button>
+    <button class="tab" onclick="sw('budget',this)">예산</button>
+    <button class="tab" onclick="sw('chart',this)">통계</button>
+    <button class="tab roast-tab" onclick="sw('roast',this)">🔥 AI 질타</button>
+  </div>
 
-### 1단계 — GitHub 레포 만들기
-1. [github.com](https://github.com) 접속 → **New repository**
-2. 이름: `budget-app` (아무거나 OK)
-3. **Public** 선택 → **Create repository**
-4. 이 폴더 안 파일 4개를 모두 업로드
-   - `index.html`
-   - `api/roast.js` ← `api` 폴더 안에 넣어야 함
-   - `vercel.json`
-   - `README.md`
+  <!-- 내 가계부 -->
+  <div id="pMy" class="pane on">
+    <div class="mets">
+      <div class="met"><div class="ml">수입</div><div class="mv inc" id="vI">₩0</div></div>
+      <div class="met"><div class="ml">지출</div><div class="mv exp" id="vE">₩0</div></div>
+      <div class="met"><div class="ml">잔액</div><div class="mv" id="vB">₩0</div></div>
+    </div>
+    <div id="budOv"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+      <span class="sec" style="margin:0;">거래 내역</span>
+      <button class="sm" id="ftgl" onclick="tgl()">+ 추가</button>
+    </div>
+    <div id="addForm" style="display:none;" class="card">
+      <div class="ttgl">
+        <button class="tbtn E on" id="tE" onclick="setType('expense')">지출</button>
+        <button class="tbtn I" id="tI" onclick="setType('income')">수입</button>
+      </div>
+      <div class="g2">
+        <div><label>금액 (원)</label><input type="number" id="fAmt" placeholder="0" min="0"/></div>
+        <div><label>날짜</label><input type="date" id="fDate"/></div>
+      </div>
+      <div class="g2">
+        <div><label>내용</label><input type="text" id="fDesc" placeholder="메모"/></div>
+        <div><label>카테고리</label><select id="fCat" style="height:36px;"></select></div>
+      </div>
+      <button class="btn" id="sBtn" onclick="addTx()"><span id="sIco">💾</span> Notion에 저장</button>
+    </div>
+    <div id="myList"></div>
+  </div>
 
-### 2단계 — Vercel 계정 만들기
-1. [vercel.com](https://vercel.com) 접속
-2. **Sign up with GitHub** 클릭 → GitHub 계정으로 연동
+  <!-- 멤버 보기 -->
+  <div id="pMembers" class="pane">
+    <div class="tip"><b>멤버 이름을 누르면</b> 카테고리별 지출이 펼쳐져요.<br>다른 사람 내역은 <b>열람 전용</b>이에요 (Notion에서 실시간 로드).</div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <button class="sm" id="vSB" onclick="setMV('s',this)" style="background:#efefeb;">요약</button>
+      <button class="sm" id="vDB" onclick="setMV('d',this)">전체 내역</button>
+    </div>
+    <div id="mSum"></div>
+    <div id="mDet" style="display:none;"></div>
+  </div>
 
-### 3단계 — 프로젝트 배포
-1. Vercel 대시보드에서 **Add New → Project**
-2. GitHub 레포 `budget-app` 선택 → **Import**
-3. 설정은 건드릴 것 없음 → **Deploy** 클릭
-4. 1~2분 기다리면 배포 완료 🎉
+  <!-- 예산 (localStorage 유지) -->
+  <div id="pBudget" class="pane">
+    <div class="tip"><b>카테고리별 예산</b>을 설정해요. 예산은 이 기기에 저장돼요.<br>80% 이상 → 주황 / 초과 → 빨강</div>
+    <div class="card">
+      <div class="g2">
+        <div><label>카테고리</label><select id="bCat" style="height:36px;"></select></div>
+        <div><label>월 예산 (원)</label><input type="number" id="bAmt" placeholder="0" min="0"/></div>
+      </div>
+      <button class="btn" onclick="saveBud()">🎯 예산 저장</button>
+    </div>
+    <div class="sec">현황</div>
+    <div id="bList"></div>
+  </div>
 
-### 4단계 — Anthropic API 키 설정 (AI 질타 기능)
-1. [console.anthropic.com](https://console.anthropic.com) → API Keys → **Create Key**
-2. 키 복사 (`sk-ant-...` 형태)
-3. Vercel 대시보드 → 프로젝트 → **Settings → Environment Variables**
-4. 아래 내용 입력:
-   - **Name**: `ANTHROPIC_API_KEY`
-   - **Value**: 복사한 API 키 붙여넣기
-5. **Save** → 프로젝트 **Redeploy** (Settings → Deployments → 최신 건 → Redeploy)
+  <!-- 통계 -->
+  <div id="pChart" class="pane">
+    <div class="tip"><b>월별 막대</b>는 내 6개월 흐름이에요. <b>파이 차트</b>는 이번 달 지출 비율이에요.</div>
+    <div class="sec">월별 수입 / 지출</div>
+    <div style="position:relative;width:100%;height:190px;"><canvas id="barC"></canvas></div>
+    <div class="sec" style="margin-top:16px;">이번 달 지출 비율</div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="position:relative;width:120px;height:120px;flex-shrink:0;"><canvas id="pieC"></canvas></div>
+      <div id="pieLeg" style="flex:1;font-size:11px;"></div>
+    </div>
+  </div>
 
-### 5단계 — 링크 공유
-Vercel이 `https://budget-app-xxx.vercel.app` 형태의 링크를 줘요.
-이 링크를 친구한테 보내면 바로 사용 가능해요!
+  <!-- AI 질타 -->
+  <div id="pRoast" class="pane">
+    <div class="tip">
+      <b>🔥 내 소비 질타받기</b> — 이번 달 내 지출을 AI가 냉정하게 분석해요<br>
+      <b>💀 그룹 전체 질타</b> — 멤버 전원 비교해서 누가 제일 문제인지 짚어줘요<br>
+      <span style="color:#c0392b;font-weight:500;">거래 내역이 많을수록 더 날카로운 분석!</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" id="rMe" onclick="roast('me')" style="flex:1;min-width:130px;background:#1a1a1a;">🔥 내 소비 질타받기</button>
+      <button class="btn" id="rAll" onclick="roast('all')" style="flex:1;min-width:130px;background:#3a0800;">💀 그룹 전체 질타</button>
+    </div>
+    <div id="roastOut"></div>
+    <div id="roastCat"></div>
+  </div>
+</div>
+</div>
 
----
+<script>
+// ─── 상수 ───────────────────────────────────────
+const CE=['식비','교통','쇼핑','문화/여가','의료','주거','통신','기타'];
+const CI=['급여','부업','용돈','기타수입'];
+const CC=['#378ADD','#1D9E75','#D85A30','#D4537E','#7F77DD','#BA7517','#639922','#888780'];
+const IC={'식비':'🍚','교통':'🚌','쇼핑':'🛍','문화/여가':'🎬','의료':'💊','주거':'🏠','통신':'📱','기타':'📌','급여':'💰','부업':'💼','용돈':'🎁','기타수입':'📥'};
+const AB=['#B5D4F4','#9FE1CB','#F5C4B3','#F4C0D1','#CECBF6','#FAC775'];
+const AF=['#0C447C','#085041','#712B13','#72243E','#3C3489','#633806'];
 
-## ✅ 기능 정리
-| 기능 | 설명 |
-|---|---|
-| 멤버 선택 | 닉네임 입력으로 본인 가계부 시작 |
-| 내 가계부 | 수입/지출 입력, 월별 이동 |
-| 멤버 보기 | 다른 멤버 내역 열람 (수정 불가) |
-| 예산 설정 | 카테고리별 월 한도 설정 |
-| 통계 | 6개월 막대 + 파이 차트 |
-| 🔥 AI 질타 | Anthropic API로 소비 습관 분석 |
+// ─── 상태 ───────────────────────────────────────
+let me='', txType='expense', myTx=[], budgets={}, vm='', sel='';
+let members=['윤지','정희'], barI=null, pieI=null;
 
-## ⚠️ 주의사항
-- 데이터는 각 사용자 브라우저 `localStorage`에 저장돼요
-- 같은 기기, 같은 브라우저에서 열어야 데이터가 유지돼요
-- 멤버 간 실시간 동기화는 지원하지 않아요 (각자 데이터 독립)
-- API 키는 절대 `index.html`이나 공개 파일에 넣지 마세요 — 반드시 Vercel 환경변수로!
+// ─── 유틸 ───────────────────────────────────────
+const fmt = n => '₩'+Math.round(n).toLocaleString('ko-KR');
+const curM = () => { const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`; };
+const mlFmt = m => { const[y,mo]=m.split('-'); return `${y}.${mo}`; };
+const pM = m => { const[y,mo]=m.split('-'); const d=new Date(+y,+mo-2,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const nM = m => { const[y,mo]=m.split('-'); const d=new Date(+y,+mo,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const lsGet = k => { try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){ return null; } };
+const lsSet = (k,v) => { try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+
+function showLoading(msg='불러오는 중...') {
+  document.getElementById('loadingMsg').textContent=msg;
+  document.getElementById('loading').classList.add('on');
+}
+function hideLoading() { document.getElementById('loading').classList.remove('on'); }
+
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2500);
+}
+
+// ─── Notion API 호출 ────────────────────────────
+async function apiSaveTx(tx) {
+  const res = await fetch('/api/tx-save', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(tx),
+  });
+  return res.json();
+}
+
+async function apiLoadTx(user, month) {
+  const params = new URLSearchParams({ month });
+  if (user) params.append('user', user);
+  const res = await fetch(`/api/tx-load?${params}`);
+  return res.json();
+}
+
+async function apiDeleteTx(notionId) {
+  const res = await fetch(`/api/tx-delete?id=${notionId}`, { method:'DELETE' });
+  return res.json();
+}
+
+// ─── 멤버 관리 ──────────────────────────────────
+function loadMembers() {
+  const saved=lsGet('bg_members');
+  if(saved) saved.forEach(m=>{ if(!members.includes(m)) members.push(m); });
+  lsSet('bg_members', members);
+}
+
+function renderHome() {
+  document.getElementById('memList').innerHTML = members.map((m,i)=>{
+    const idx=i%AB.length, s=sel===m;
+    return `<div class="hmem${s?' sel':''}" onclick="selectM('${m}')">
+      <div class="ava" style="background:${AB[idx]};color:${AF[idx]};">${m.slice(0,2)}</div>
+      <span style="flex:1;font-size:14px;font-weight:${s?600:400};">${m}</span>
+      ${s?'<span style="font-size:12px;color:#185FA5;font-weight:600;">✓</span>':''}
+    </div>`;
+  }).join('');
+}
+
+function selectM(name) {
+  sel=name;
+  const btn=document.getElementById('startBtn');
+  btn.disabled=false; btn.style.opacity='1';
+  renderHome();
+}
+
+function addMem() {
+  const v=document.getElementById('nickIn').value.trim();
+  if(!v) return;
+  if(!members.includes(v)){ members.push(v); lsSet('bg_members',members); }
+  document.getElementById('nickIn').value='';
+  selectM(v); renderHome();
+  toast(`${v} 추가됐어요 👋`);
+}
+
+// ─── 앱 시작 ────────────────────────────────────
+async function start() {
+  if(!sel) return;
+  me=sel;
+  lsSet('bg_last', me);
+  budgets = lsGet(`bg_bud_${me}`) || {};
+  document.getElementById('sHome').classList.remove('on');
+  document.getElementById('sMain').classList.add('on');
+  const i=members.indexOf(me)%AB.length;
+  document.getElementById('myPill').innerHTML=
+    `<span class="pill"><span class="mava" style="background:${AB[i]};color:${AF[i]};">${me.slice(0,2)}</span>${me}의 가계부</span>`;
+  vm=curM();
+  document.getElementById('mlbl').textContent=mlFmt(vm);
+  setType('expense');
+  document.getElementById('fDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('bCat').innerHTML=CE.map(c=>`<option>${c}</option>`).join('');
+  await loadMyTx();
+}
+
+// ─── 데이터 로드 ─────────────────────────────────
+async function loadMyTx() {
+  showLoading('Notion에서 불러오는 중...');
+  try {
+    const data = await apiLoadTx(me, vm);
+    myTx = data.txList || [];
+  } catch(e) {
+    myTx = [];
+    toast('Notion 연결 실패 — 오프라인 모드');
+  }
+  hideLoading();
+  render();
+}
+
+// ─── 거래 CRUD ───────────────────────────────────
+async function addTx() {
+  const amt=parseFloat(document.getElementById('fAmt').value);
+  const date=document.getElementById('fDate').value;
+  const cat=document.getElementById('fCat').value;
+  const desc=document.getElementById('fDesc').value.trim()||cat;
+  if(!amt||amt<=0||!date){ toast('날짜와 금액을 입력해 주세요'); return; }
+
+  const btn=document.getElementById('sBtn'), ico=document.getElementById('sIco');
+  btn.disabled=true; ico.innerHTML='<span class="spin"></span>';
+
+  try {
+    const result = await apiSaveTx({ type:txType, amount:amt, date, cat, desc, user:me });
+    if(result.ok) {
+      // 새 거래를 로컬에 추가
+      const txMonth=date.slice(0,7);
+      if(txMonth===vm) {
+        myTx.push({ id:result.id, type:txType, amount:amt, date, cat, desc, user:me });
+      }
+      render();
+      toast('✓ Notion에 저장됐어요');
+      document.getElementById('fAmt').value='';
+      document.getElementById('fDesc').value='';
+    } else {
+      toast('저장 실패 — 다시 시도해 주세요');
+    }
+  } catch(e) {
+    toast('저장 오류 발생');
+  }
+  btn.disabled=false; ico.textContent='💾';
+}
+
+async function delTx(notionId) {
+  showLoading('삭제 중...');
+  try {
+    await apiDeleteTx(notionId);
+    myTx = myTx.filter(t=>t.id!==notionId);
+    render();
+    toast('삭제됐어요');
+  } catch(e) {
+    toast('삭제 실패');
+  }
+  hideLoading();
+}
+
+function saveBud() {
+  const cat=document.getElementById('bCat').value;
+  const amt=parseFloat(document.getElementById('bAmt').value);
+  if(!amt||amt<=0){ toast('예산 금액을 입력해 주세요'); return; }
+  budgets[cat]=amt;
+  lsSet(`bg_bud_${me}`, budgets);
+  render();
+  toast(`✓ ${cat} 예산 설정됐어요`);
+  document.getElementById('bAmt').value='';
+}
+
+// ─── 월 이동 ─────────────────────────────────────
+async function chM(d) {
+  const n=d<0?pM(vm):nM(vm);
+  if(n>curM()) return;
+  vm=n;
+  document.getElementById('mlbl').textContent=mlFmt(vm);
+  await loadMyTx();
+  if(document.getElementById('pMembers').classList.contains('on')) await renderMembers();
+}
+
+function setType(t) {
+  txType=t;
+  document.getElementById('tE').className='tbtn E'+(t==='expense'?' on':'');
+  document.getElementById('tI').className='tbtn I'+(t==='income'?' on':'');
+  document.getElementById('fCat').innerHTML=(t==='expense'?CE:CI).map(c=>`<option>${c}</option>`).join('');
+}
+
+function sw(name,el) {
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on')); el.classList.add('on');
+  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('on'));
+  const map={my:'pMy',members:'pMembers',budget:'pBudget',chart:'pChart',roast:'pRoast'};
+  document.getElementById(map[name]).classList.add('on');
+  if(name==='chart') renderCharts();
+  if(name==='members') renderMembers();
+}
+
+function tgl() {
+  const f=document.getElementById('addForm'),b=document.getElementById('ftgl');
+  const o=f.style.display==='none';
+  f.style.display=o?'block':'none';
+  b.textContent=o?'✕ 닫기':'+ 추가';
+}
+
+// ─── 렌더 ────────────────────────────────────────
+function render() {
+  const tx=myTx;
+  const inc=tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp=tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const bal=inc-exp;
+
+  document.getElementById('vI').textContent=fmt(inc);
+  document.getElementById('vE').textContent=fmt(exp);
+  const bv=document.getElementById('vB');
+  bv.textContent=fmt(bal); bv.className='mv '+(bal>=0?'pos':'neg');
+
+  const be=Object.entries(budgets);
+  if(be.length){
+    const tot=be.reduce((s,[,v])=>s+v,0);
+    const pct=Math.min(100,exp/tot*100);
+    const c=pct>=100?'#E24B4A':pct>=80?'#BA7517':'#1D9E75';
+    document.getElementById('budOv').innerHTML=
+      `<div style="background:#f4f4f0;border-radius:8px;padding:9px 13px;margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px;">
+          <span style="color:#888;">예산 사용률</span>
+          <span style="color:${c};font-weight:600;">${pct.toFixed(0)}% · ${fmt(exp)} / ${fmt(tot)}</span>
+        </div>
+        <div class="bw" style="height:7px;"><div class="bf" style="width:${pct.toFixed(1)}%;background:${c};"></div></div>
+      </div>`;
+  } else document.getElementById('budOv').innerHTML='';
+
+  const sorted=[...tx].sort((a,b)=>b.date.localeCompare(a.date));
+  document.getElementById('myList').innerHTML = sorted.length
+    ? sorted.map(t=>`
+        <div class="tx">
+          <div class="txic" style="background:${t.type==='income'?'#EAF3DE':'#FCEBEB'};">${IC[t.cat]||'📌'}</div>
+          <div class="txin">
+            <div class="txn">${t.desc}</div>
+            <div class="txm">${t.date} · ${t.cat}</div>
+          </div>
+          <div class="txa ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
+          <button class="del" onclick="delTx('${t.id}')">✕</button>
+        </div>`).join('')
+    : '<div style="padding:22px;text-align:center;font-size:12px;color:#aaa;">이번 달 내역 없음<br>위 "+ 추가" 버튼으로 입력하세요</div>';
+
+  document.getElementById('bList').innerHTML = be.map(([cat,bgt])=>{
+    const sp=tx.filter(t=>t.type==='expense'&&t.cat===cat).reduce((s,t)=>s+t.amount,0);
+    const pct=Math.min(100,sp/bgt*100);
+    const c=pct>=100?'#E24B4A':pct>=80?'#BA7517':'#1D9E75';
+    return `<div class="card" style="margin-bottom:7px;">
+      <div style="display:flex;justify-content:space-between;">
+        <span style="font-size:12px;font-weight:500;">${IC[cat]||'📌'} ${cat}</span>
+        <span style="font-size:11px;color:${c};font-weight:600;">${fmt(sp)} / ${fmt(bgt)}</span>
+      </div>
+      <div class="bw" style="height:6px;margin-top:5px;">
+        <div class="bf" style="width:${pct.toFixed(1)}%;background:${c};"></div>
+      </div>
+      ${pct>=100?`<div style="font-size:11px;color:#A32D2D;margin-top:3px;">초과 ${fmt(sp-bgt)}</div>`:''}
+    </div>`;
+  }).join('') || '<div style="font-size:12px;color:#aaa;">예산 미설정</div>';
+}
+
+// ─── 멤버 보기 (Notion에서 로드) ─────────────────
+async function renderMembers() {
+  showLoading('멤버 데이터 불러오는 중...');
+  try {
+    // 모든 멤버 이번 달 데이터 로드 (전체 쿼리)
+    const data = await apiLoadTx(null, vm);
+    const allTx = data.txList || [];
+
+    // 멤버별로 그룹화
+    const memberMap = {};
+    for(const m of members) {
+      memberMap[m] = { user:m, txList:[], expense:0, income:0, catMap:{} };
+    }
+    for(const t of allTx) {
+      if(!memberMap[t.user]) memberMap[t.user]={ user:t.user, txList:[], expense:0, income:0, catMap:{} };
+      memberMap[t.user].txList.push(t);
+      if(t.type==='expense'){
+        memberMap[t.user].expense+=t.amount;
+        memberMap[t.user].catMap[t.cat]=(memberMap[t.user].catMap[t.cat]||0)+t.amount;
+      } else {
+        memberMap[t.user].income+=t.amount;
+      }
+    }
+    const all = members.map(m=>({...memberMap[m]||{user:m,txList:[],expense:0,income:0,catMap:{}}, isMe:m===me}));
+    const maxE=Math.max(...all.map(a=>a.expense),1);
+
+    document.getElementById('mSum').innerHTML = all.map((a,i)=>{
+      const idx=i%AB.length;
+      return `<div class="mc">
+        <div class="mh" onclick="toggleM('mb${i}')">
+          <div class="ava" style="background:${AB[idx]};color:${AF[idx]};">${a.user.slice(0,2)}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:500;">${a.user}${a.isMe?' <span style="font-size:10px;color:#aaa;">(나)</span>':''}</div>
+            <div style="font-size:10px;color:#888;">수입 ${fmt(a.income)} · 지출 ${fmt(a.expense)}</div>
+          </div>
+          <div style="font-size:13px;font-weight:600;color:#A32D2D;margin-right:6px;">${fmt(a.expense)}</div>
+          <span style="color:#ccc;font-size:11px;">▼</span>
+        </div>
+        <div id="mb${i}" class="mb">
+          <div class="bw" style="height:6px;margin-bottom:8px;">
+            <div class="bf" style="width:${(a.expense/maxE*100).toFixed(1)}%;background:${AB[idx]};"></div>
+          </div>
+          ${Object.entries(a.catMap).sort((x,y)=>y[1]-x[1]).map(([cat,amt])=>
+            `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f0f0ec;">
+              <span style="color:#888;">${IC[cat]||'📌'} ${cat}</span>
+              <span style="font-weight:500;">${fmt(amt)}</span>
+            </div>`).join('')||'<div style="font-size:11px;color:#aaa;">내역 없음</div>'}
+        </div>
+      </div>`;
+    }).join('');
+
+    // 전체 내역 (날짜순)
+    allTx.sort((a,b)=>b.date.localeCompare(a.date));
+    document.getElementById('mDet').innerHTML = allTx.length
+      ? `<div class="tip">다른 멤버 내역은 <b>열람 전용</b>이에요.</div>`
+        + allTx.map(t=>{
+            const bg=t.type==='income'?'#EAF3DE':'#FCEBEB';
+            const isMe=t.user===me;
+            return `<div class="tx">
+              <div class="txic" style="background:${bg};">${IC[t.cat]||'📌'}</div>
+              <div class="txin">
+                <div class="txn">${t.desc} <span style="font-size:10px;color:#aaa;">· ${t.user}</span></div>
+                <div class="txm">${t.date} · ${t.cat}</div>
+              </div>
+              <div class="txa ${t.type}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</div>
+              ${isMe?`<button class="del" onclick="delTx('${t.id}')">✕</button>`:'<span class="rb">열람</span>'}
+            </div>`;
+          }).join('')
+      : '<div style="padding:20px;text-align:center;font-size:12px;color:#aaa;">이번 달 내역 없음</div>';
+  } catch(e) {
+    document.getElementById('mSum').innerHTML='<div style="font-size:12px;color:#aaa;">데이터 로드 실패</div>';
+  }
+  hideLoading();
+}
+
+function setMV(v,el) {
+  document.querySelectorAll('#pMembers .sm').forEach(b=>b.style.background='');
+  el.style.background='#efefeb';
+  document.getElementById('mSum').style.display=v==='s'?'block':'none';
+  document.getElementById('mDet').style.display=v==='d'?'block':'none';
+}
+function toggleM(id){ document.getElementById(id).classList.toggle('on'); }
+
+// ─── 통계 ─────────────────────────────────────────
+function get6M(){
+  const ms=[],n=new Date();
+  for(let i=5;i>=0;i--){
+    const d=new Date(n.getFullYear(),n.getMonth()-i,1);
+    ms.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  return ms;
+}
+
+async function renderCharts() {
+  // 6개월 데이터를 Notion에서 로드
+  showLoading('통계 불러오는 중...');
+  const months=get6M();
+  const chartData={};
+  try {
+    // 6개월 범위로 한 번에 로드
+    const startMonth=months[0], endMonth=months[months.length-1];
+    // 월별로 각각 로드 (최적화: 실제로는 범위 쿼리 가능하지만 간단하게)
+    await Promise.all(months.map(async m=>{
+      const data=await apiLoadTx(me,m);
+      chartData[m]=data.txList||[];
+    }));
+  } catch(e){}
+  hideLoading();
+
+  const iD=months.map(m=>(chartData[m]||[]).filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0));
+  const eD=months.map(m=>(chartData[m]||[]).filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0));
+  if(barI){ barI.destroy(); barI=null; }
+  barI=new Chart(document.getElementById('barC'),{
+    type:'bar',
+    data:{
+      labels:months.map(m=>parseInt(m.split('-')[1])+'월'),
+      datasets:[
+        {label:'수입',data:iD,backgroundColor:'#5DCAA5',borderRadius:4},
+        {label:'지출',data:eD,backgroundColor:'#F0997B',borderRadius:4}
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{font:{size:10}}},
+              y:{grid:{color:'rgba(0,0,0,0.05)'},ticks:{callback:v=>'₩'+(v/10000).toFixed(0)+'만',font:{size:9}}}}}
+  });
+
+  const cm={};
+  myTx.filter(t=>t.type==='expense').forEach(t=>{ cm[t.cat]=(cm[t.cat]||0)+t.amount; });
+  const cats=Object.keys(cm),vals=cats.map(c=>cm[c]),tot=vals.reduce((s,v)=>s+v,0);
+  if(pieI){ pieI.destroy(); pieI=null; }
+  if(cats.length){
+    pieI=new Chart(document.getElementById('pieC'),{
+      type:'doughnut',
+      data:{labels:cats,datasets:[{data:vals,backgroundColor:CC.slice(0,cats.length),borderWidth:2,borderColor:'#fff'}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'55%'}
+    });
+    document.getElementById('pieLeg').innerHTML=cats.map((c,i)=>
+      `<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;">
+        <span style="width:9px;height:9px;border-radius:2px;background:${CC[i]};flex-shrink:0;"></span>
+        <span style="color:#888;">${c}</span>
+        <span style="margin-left:auto;font-weight:500;">${tot>0?((vals[i]/tot*100).toFixed(1)):0}%</span>
+      </div>`).join('');
+  } else {
+    document.getElementById('pieLeg').innerHTML='<div style="font-size:12px;color:#aaa;">지출 없음</div>';
+  }
+}
+
+// ─── AI 질타 ──────────────────────────────────────
+async function roast(target) {
+  const tx=myTx;
+  let data='';
+  const systemPrompt=`당신은 소비 습관 분석 독설가입니다. 규칙:
+1. 수치를 직접 인용하며 구체적으로 질타
+2. 문제 소비 패턴 3개 이상 명확히 지적
+3. 칭찬 최대 1줄만
+4. 한국어, 이모지 적극 사용
+5. 마지막 줄 반드시 "💬 한 줄 평: "으로 시작
+6. 500자 이내`;
+
+  if(target==='me'){
+    const exp=tx.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const inc=tx.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const cm={};tx.filter(t=>t.type==='expense').forEach(t=>{ cm[t.cat]=(cm[t.cat]||0)+t.amount; });
+    const bs=Object.entries(budgets).map(([c,b])=>{const s=cm[c]||0;return`${c}:예산${fmt(b)} 실제${fmt(s)}(${b>0?((s/b*100).toFixed(0)):0}%)`;}).join(', ');
+    data=`사용자:${me} / 월:${vm}
+수입:${fmt(inc)}, 지출:${fmt(exp)}, 잔액:${fmt(inc-exp)}
+카테고리별:\n${Object.entries(cm).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`- ${k}: ${fmt(v)}`).join('\n')||'없음'}
+예산: ${bs||'미설정'}
+거래:\n${[...tx].sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`- ${t.date} ${t.type==='expense'?'-':'+'}${fmt(t.amount)} [${t.cat}] ${t.desc}`).join('\n')||'없음'}`;
+  } else {
+    showLoading('그룹 데이터 불러오는 중...');
+    const data2=await apiLoadTx(null,vm);
+    hideLoading();
+    const allTx=data2.txList||[];
+    const mmap={};
+    for(const t of allTx){
+      if(!mmap[t.user]) mmap[t.user]={user:t.user,expense:0,income:0,catMap:{}};
+      if(t.type==='expense'){ mmap[t.user].expense+=t.amount; mmap[t.user].catMap[t.cat]=(mmap[t.user].catMap[t.cat]||0)+t.amount; }
+      else mmap[t.user].income+=t.amount;
+    }
+    data=`그룹 ${Object.keys(mmap).length}명 ${vm}:\n`+Object.values(mmap).map(a=>
+      `[${a.user}] 지출:${fmt(a.expense)} 수입:${fmt(a.income)}\n`+
+      Object.entries(a.catMap).sort((x,y)=>y[1]-x[1]).map(([c,v])=>`  - ${c}: ${fmt(v)}`).join('\n')
+    ).join('\n\n');
+  }
+
+  const btnId=target==='me'?'rMe':'rAll';
+  document.getElementById(btnId).disabled=true;
+  document.getElementById('roastOut').innerHTML=
+    `<div style="display:flex;align-items:center;gap:9px;padding:20px 0;font-size:12px;color:#888;">
+      <span class="spin"></span> AI가 소비 데이터를 뜯어보고 있어요...
+    </div>`;
+  document.getElementById('roastCat').innerHTML='';
+
+  try{
+    const res=await fetch('/api/roast',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({system:systemPrompt,messages:[{role:'user',content:`냉정하게 분석해줘:\n\n${data}`}]})
+    });
+    const d=await res.json();
+    if(d.text){
+      document.getElementById('roastOut').innerHTML=`<div class="roastbox">${d.text.replace(/\n/g,'<br>')}</div>`;
+    } else throw new Error();
+  }catch(e){
+    document.getElementById('roastOut').innerHTML=
+      `<div style="color:#A32D2D;font-size:12px;padding:10px;background:#fff5f5;border-radius:8px;margin-top:12px;">
+        AI 연결 오류 — ANTHROPIC_API_KEY 환경변수를 확인해 주세요.
+      </div>`;
+  }
+  document.getElementById(btnId).disabled=false;
+
+  const cm={};tx.filter(t=>t.type==='expense').forEach(t=>{ cm[t.cat]=(cm[t.cat]||0)+t.amount; });
+  const tot=Object.values(cm).reduce((s,v)=>s+v,0);
+  if(Object.keys(cm).length){
+    document.getElementById('roastCat').innerHTML=
+      `<div class="sec" style="margin-top:14px;">${me}의 이번 달 지출 분포</div>`+
+      Object.entries(cm).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>
+        `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+          <span style="font-size:11px;min-width:60px;color:#888;">${cat}</span>
+          <div class="bw" style="flex:1;"><div class="bf" style="width:${tot>0?((amt/tot*100).toFixed(1)):0}%;background:#E24B4A;"></div></div>
+          <span style="font-size:11px;font-weight:500;min-width:66px;text-align:right;">${fmt(amt)}</span>
+          <span style="font-size:10px;color:#aaa;min-width:28px;text-align:right;">${tot>0?((amt/tot*100).toFixed(0)):0}%</span>
+        </div>`).join('');
+  }
+}
+
+function goHome(){
+  me=''; myTx=[]; budgets={}; sel='';
+  document.getElementById('sMain').classList.remove('on');
+  document.getElementById('sHome').classList.add('on');
+  document.getElementById('startBtn').disabled=true;
+  document.getElementById('startBtn').style.opacity='.4';
+  renderHome();
+}
+
+// ─── 초기화 ───────────────────────────────────────
+loadMembers();
+renderHome();
+const last=lsGet('bg_last');
+if(last) selectM(last);
+</script>
+</body>
+</html>
