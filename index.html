@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>📒 공유 가계부</title>
+    <title>📒 WooJal</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <style>
       * {
@@ -863,7 +863,7 @@
       }
 
       async function apiSaveBudget(user, month, cat, amount) {
-        const res = await fetch("/api/budget-save", {
+        const res = await fetch("/api/budget_save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user, month, cat, amount }),
@@ -873,7 +873,7 @@
 
       async function apiLoadBudget(user, month) {
         const params = new URLSearchParams({ user, month });
-        const res = await fetch(`/api/budget-load?${params}`);
+        const res = await fetch(`/api/budget_load?${params}`);
         return res.json();
       }
 

@@ -35,7 +35,6 @@ export default async function handler(req, res) {
     const data = await response.json();
     if (!response.ok) return res.status(response.status).json({ error: data });
 
-    // { 식비: 50000, 교통: 30000 } 형태로 변환
     const budgets = {};
     for (const page of data.results) {
       const p = page.properties;

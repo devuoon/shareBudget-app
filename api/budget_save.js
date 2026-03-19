@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 기존 같은 사용자+월+카테고리 항목 찾아서 업데이트 or 새로 생성
+    // 기존 같은 사용자+월+카테고리 찾기
     const queryRes = await fetch(
       `https://api.notion.com/v1/databases/${DB_ID}/query`,
       {
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
     const existing = queryData.results?.[0];
 
     if (existing) {
-      // 이미 있으면 업데이트
+      // 이미 있으면 예산금액만 업데이트
       const updateRes = await fetch(
         `https://api.notion.com/v1/pages/${existing.id}`,
         {
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
         return res.status(updateRes.status).json({ error: updateData });
       return res.status(200).json({ id: existing.id, ok: true });
     } else {
-      // 없으면 새로 생성
+      // 없으면 새로 생성 — 제목 필드명이 빈 문자열("")임에 주의
       const createRes = await fetch("https://api.notion.com/v1/pages", {
         method: "POST",
         headers: {
@@ -72,7 +72,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           parent: { database_id: DB_ID },
           properties: {
-            제목: { title: [{ text: { content: `${user}_${month}_${cat}` } }] },
+            "": { title: [{ text: { content: `${user}_${month}_${cat}` } }] },
             카테고리: { select: { name: cat } },
             예산금액: { number: Number(amount) },
             사용자: { rich_text: [{ text: { content: user } }] },
@@ -81,8 +81,10 @@ export default async function handler(req, res) {
         }),
       });
       const createData = await createRes.json();
-      if (!createRes.ok)
+      if (!createRes.ok) {
+        console.error("Notion create error:", JSON.stringify(createData));
         return res.status(createRes.status).json({ error: createData });
+      }
       return res.status(200).json({ id: createData.id, ok: true });
     }
   } catch (err) {
