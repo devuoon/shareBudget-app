@@ -36,13 +36,17 @@ export default async function handler(req, res) {
     if (!response.ok) return res.status(response.status).json({ error: data });
 
     const budgets = {};
+    const budgetIds = {};
     for (const page of data.results) {
       const p = page.properties;
       const cat = p["카테고리"]?.select?.name;
       const amt = p["예산금액"]?.number;
-      if (cat && amt) budgets[cat] = amt;
+      if (cat && amt) {
+        budgets[cat] = amt;
+        budgetIds[cat] = page.id; // Notion 페이지 ID 저장
+      }
     }
-    return res.status(200).json({ budgets });
+    return res.status(200).json({ budgets, budgetIds });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Internal server error" });

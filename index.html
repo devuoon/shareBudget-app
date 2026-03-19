@@ -640,13 +640,40 @@
           <div id="mDet" style="display: none"></div>
         </div>
 
-        <!-- 예산 (localStorage 유지) -->
+        <!-- 예산 -->
         <div id="pBudget" class="pane">
           <div class="tip">
-            <b>카테고리별 예산</b>을 설정해요. 예산은 이 기기에 저장돼요.<br />80%
-            이상 → 주황 / 초과 → 빨강
+            <b>카테고리별 예산</b>을 설정해요.<br />80% 이상 → 주황 / 초과 →
+            빨강 / ✏️ 수정 · 🗑 삭제 가능
           </div>
-          <div class="card">
+          <div class="card" id="budForm">
+            <div
+              id="editBanner"
+              style="
+                display: none;
+                background: #eaf3de;
+                border-radius: 6px;
+                padding: 5px 10px;
+                font-size: 11px;
+                color: #3b6d11;
+                margin-bottom: 8px;
+              "
+            >
+              ✏️ 수정 중 — <span id="editCatName"></span>
+              <button
+                onclick="cancelEdit()"
+                style="
+                  background: none;
+                  border: none;
+                  cursor: pointer;
+                  color: #888;
+                  font-size: 11px;
+                  float: right;
+                "
+              >
+                ✕ 취소
+              </button>
+            </div>
             <div class="g2">
               <div>
                 <label>카테고리</label
@@ -657,7 +684,9 @@
                 ><input type="number" id="bAmt" placeholder="0" min="0" />
               </div>
             </div>
-            <button class="btn" onclick="saveBud()">🎯 예산 저장</button>
+            <button class="btn" id="budSaveBtn" onclick="saveBud()">
+              🎯 예산 저장
+            </button>
           </div>
           <div class="sec">현황</div>
           <div id="bList"></div>
@@ -838,6 +867,7 @@
         txType = "expense",
         myTx = [],
         budgets = {},
+        budgetIds = {},
         vm = "",
         sel = "";
       let members = ["윤지", "정희"],
@@ -929,6 +959,13 @@
       async function apiLoadBudget(user, month) {
         const params = new URLSearchParams({ user, month });
         const res = await fetch(`/api/budget_load?${params}`);
+        return res.json();
+      }
+
+      async function apiDeleteBudget(id) {
+        const res = await fetch(`/api/budget-delete?id=${id}`, {
+          method: "DELETE",
+        });
         return res.json();
       }
 
@@ -1026,6 +1063,7 @@
           ]);
           myTx = txData.txList || [];
           budgets = budData.budgets || {};
+          budgetIds = budData.budgetIds || {};
         } catch (e) {
           myTx = [];
           budgets = {};
@@ -1101,6 +1139,8 @@
         hideLoading();
       }
 
+      let editingBudgetId = null;
+
       async function saveBud() {
         const cat = document.getElementById("bCat").value;
         const amt = parseFloat(document.getElementById("bAmt").value);
@@ -1108,18 +1148,64 @@
           toast("예산 금액을 입력해 주세요");
           return;
         }
+
         budgets[cat] = amt;
+        if (editingBudgetId) budgetIds[cat] = editingBudgetId;
         render();
-        const btn = document.querySelector("#pBudget .btn");
+
+        const btn = document.getElementById("budSaveBtn");
         if (btn) btn.disabled = true;
         try {
-          await apiSaveBudget(me, vm, cat, amt);
-          toast(`✓ ${cat} 예산 Notion에 저장됐어요`);
+          const result = await apiSaveBudget(me, vm, cat, amt);
+          if (result.id) budgetIds[cat] = result.id;
+          toast(`✓ ${cat} 예산 저장됐어요`);
         } catch (e) {
           toast(`✓ ${cat} 예산 설정됐어요`);
         }
         if (btn) btn.disabled = false;
         document.getElementById("bAmt").value = "";
+        cancelEdit();
+      }
+
+      function editBudget(cat, amt, id) {
+        editingBudgetId = id;
+        // 카테고리 셀렉트에서 해당 항목 선택
+        const sel = document.getElementById("bCat");
+        for (let i = 0; i < sel.options.length; i++) {
+          if (sel.options[i].value === cat) {
+            sel.selectedIndex = i;
+            break;
+          }
+        }
+        document.getElementById("bAmt").value = amt;
+        document.getElementById("editBanner").style.display = "block";
+        document.getElementById("editCatName").textContent = cat;
+        document.getElementById("budSaveBtn").textContent = "✏️ 수정 저장";
+        document
+          .getElementById("budForm")
+          .scrollIntoView({ behavior: "smooth" });
+      }
+
+      function cancelEdit() {
+        editingBudgetId = null;
+        document.getElementById("editBanner").style.display = "none";
+        document.getElementById("bAmt").value = "";
+        document.getElementById("budSaveBtn").textContent = "🎯 예산 저장";
+      }
+
+      async function deleteBudget(cat, id) {
+        if (!confirm(`${cat} 예산을 삭제할까요?`)) return;
+        delete budgets[cat];
+        delete budgetIds[cat];
+        render();
+        if (id) {
+          try {
+            await apiDeleteBudget(id);
+            toast(`${cat} 예산 삭제됐어요`);
+          } catch (e) {
+            toast(`${cat} 예산 삭제됐어요`);
+          }
+        }
       }
 
       // ─── 월 이동 ─────────────────────────────────────
@@ -1231,10 +1317,15 @@
               const pct = Math.min(100, (sp / bgt) * 100);
               const c =
                 pct >= 100 ? "#E24B4A" : pct >= 80 ? "#BA7517" : "#1D9E75";
+              const id = budgetIds[cat] || null;
               return `<div class="card" style="margin-bottom:7px;">
-      <div style="display:flex;justify-content:space-between;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12px;font-weight:500;">${IC[cat] || "📌"} ${cat}</span>
-        <span style="font-size:11px;color:${c};font-weight:600;">${fmt(sp)} / ${fmt(bgt)}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;color:${c};font-weight:600;">${fmt(sp)} / ${fmt(bgt)}</span>
+          <button onclick="editBudget('${cat}',${bgt},'${id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 3px;" title="수정">✏️</button>
+          <button onclick="deleteBudget('${cat}','${id}')" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 3px;" title="삭제">🗑️</button>
+        </div>
       </div>
       <div class="bw" style="height:6px;margin-top:5px;">
         <div class="bf" style="width:${pct.toFixed(1)}%;background:${c};"></div>
@@ -1643,6 +1734,7 @@
         me = "";
         myTx = [];
         budgets = {};
+        budgetIds = {};
         sel = "";
         document.getElementById("sMain").classList.remove("on");
         document.getElementById("sHome").classList.add("on");
