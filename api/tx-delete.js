@@ -1,75 +1,35 @@
-// api/tx-load.js
-// 특정 사용자의 특정 월 거래 내역을 Notion DB에서 불러오기
-
-const DB_ID = 'e10dffa0f872481b8a26e6027f40e279';
-
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "DELETE, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") return res.status(200).end();
 
-  const { user, month } = req.query; // month: "2025-03"
-  if (!month) return res.status(400).json({ error: 'month required' });
-
-  const startDate = `${month}-01`;
-  const [y, m] = month.split('-');
-  const lastDay = new Date(+y, +m, 0).getDate();
-  const endDate = `${month}-${String(lastDay).padStart(2, '0')}`;
-
-  // 필터 구성: 날짜 범위 + (사용자 있으면 사용자 필터)
-  const andFilters = [
-    { property: '날짜', date: { on_or_after: startDate } },
-    { property: '날짜', date: { on_or_before: endDate } },
-  ];
-  if (user) {
-    andFilters.push({ property: '사용자', rich_text: { equals: user } });
+  // DELETE 또는 POST 둘 다 허용 (브라우저 호환성)
+  if (req.method !== "DELETE" && req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const { id } = req.query;
+  if (!id) return res.status(400).json({ error: "id required" });
+
   try {
-    // 페이지네이션으로 전체 로드
-    let allResults = [];
-    let cursor = undefined;
-    do {
-      const body = {
-        filter: { and: andFilters },
-        sorts: [{ property: '날짜', direction: 'ascending' }],
-        page_size: 100,
-        ...(cursor ? { start_cursor: cursor } : {}),
-      };
-      const response = await fetch(`https://api.notion.com/v1/databases/${DB_ID}/query`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.NOTION_TOKEN}`,
-          'Notion-Version': '2022-06-28',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      });
-      const data = await response.json();
-      if (!response.ok) return res.status(response.status).json({ error: data });
-      allResults = allResults.concat(data.results);
-      cursor = data.has_more ? data.next_cursor : undefined;
-    } while (cursor);
-
-    // Notion 페이지 → 앱 트랜잭션 형태로 변환
-    const txList = allResults.map(page => {
-      const p = page.properties;
-      return {
-        id: page.id,
-        type: p['유형']?.select?.name === '수입' ? 'income' : 'expense',
-        amount: p['금액']?.number || 0,
-        date: p['날짜']?.date?.start || '',
-        cat: p['카테고리']?.select?.name || '기타',
-        desc: p['제목']?.title?.[0]?.text?.content || '',
-        user: p['사용자']?.rich_text?.[0]?.text?.content || '',
-      };
+    const response = await fetch(`https://api.notion.com/v1/pages/${id}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${process.env.NOTION_TOKEN}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ archived: true }),
     });
-
-    return res.status(200).json({ txList });
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("Notion delete error:", JSON.stringify(data));
+      return res.status(response.status).json({ error: data });
+    }
+    return res.status(200).json({ ok: true });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: "Internal server error" });
   }
 }
