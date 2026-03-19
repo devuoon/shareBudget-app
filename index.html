@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>📒 WooJal | 우리만잘살자</title>
+    <title>📒 공유 가계부</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
     <style>
       * {
@@ -489,12 +489,12 @@
       <div id="sHome" class="scr on">
         <div style="max-width: 300px; margin: 28px auto">
           <div style="text-align: center; margin-bottom: 20px">
-            <div style="font-size: 36px; margin-bottom: 8px">💰</div>
+            <div style="font-size: 36px; margin-bottom: 8px">📒</div>
             <div style="font-size: 17px; font-weight: 600; margin-bottom: 4px">
-              WooJal
+              공유 가계부
             </div>
             <div style="font-size: 12px; color: #888; margin-bottom: 6px">
-              우리만 잘 살자 by. 보겜동
+              이름을 눌러 선택하세요
             </div>
             <div class="notion-badge">⚡ Notion에 실시간 저장</div>
           </div>
@@ -862,6 +862,21 @@
         return res.json();
       }
 
+      async function apiSaveBudget(user, month, cat, amount) {
+        const res = await fetch("/api/budget-save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user, month, cat, amount }),
+        });
+        return res.json();
+      }
+
+      async function apiLoadBudget(user, month) {
+        const params = new URLSearchParams({ user, month });
+        const res = await fetch(`/api/budget-load?${params}`);
+        return res.json();
+      }
+
       // ─── 멤버 관리 ──────────────────────────────────
       function loadMembers() {
         const saved = lsGet("bg_members");
@@ -912,7 +927,7 @@
         if (!sel) return;
         me = sel;
         lsSet("bg_last", me);
-        budgets = lsGet(`bg_bud_${me}`) || {};
+        // 예산은 loadMyTx 안에서 Notion에서 로드
         document.getElementById("sHome").classList.remove("on");
         document.getElementById("sMain").classList.add("on");
         const i = members.indexOf(me) % AB.length;
@@ -934,10 +949,15 @@
       async function loadMyTx() {
         showLoading("Notion에서 불러오는 중...");
         try {
-          const data = await apiLoadTx(me, vm);
-          myTx = data.txList || [];
+          const [txData, budData] = await Promise.all([
+            apiLoadTx(me, vm),
+            apiLoadBudget(me, vm),
+          ]);
+          myTx = txData.txList || [];
+          budgets = budData.budgets || {};
         } catch (e) {
           myTx = [];
+          budgets = {};
           toast("Notion 연결 실패 — 오프라인 모드");
         }
         hideLoading();
@@ -1010,7 +1030,7 @@
         hideLoading();
       }
 
-      function saveBud() {
+      async function saveBud() {
         const cat = document.getElementById("bCat").value;
         const amt = parseFloat(document.getElementById("bAmt").value);
         if (!amt || amt <= 0) {
@@ -1018,9 +1038,16 @@
           return;
         }
         budgets[cat] = amt;
-        lsSet(`bg_bud_${me}`, budgets);
         render();
-        toast(`✓ ${cat} 예산 설정됐어요`);
+        const btn = document.querySelector("#pBudget .btn");
+        if (btn) btn.disabled = true;
+        try {
+          await apiSaveBudget(me, vm, cat, amt);
+          toast(`✓ ${cat} 예산 Notion에 저장됐어요`);
+        } catch (e) {
+          toast(`✓ ${cat} 예산 설정됐어요`);
+        }
+        if (btn) btn.disabled = false;
         document.getElementById("bAmt").value = "";
       }
 
@@ -1030,7 +1057,7 @@
         if (n > curM()) return;
         vm = n;
         document.getElementById("mlbl").textContent = mlFmt(vm);
-        await loadMyTx();
+        await loadMyTx(); // 월 바뀌면 예산도 자동으로 같이 불러옴
         if (document.getElementById("pMembers").classList.contains("on"))
           await renderMembers();
       }
