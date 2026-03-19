@@ -8,13 +8,14 @@ export default async function handler(req, res) {
   if (req.method !== "POST")
     return res.status(405).json({ error: "Method not allowed" });
 
-  const { user, month, cat, amount } = req.body;
+  let body = req.body;
+  if (typeof body === "string") body = JSON.parse(body);
+  const { user, month, cat, amount } = body || {};
   if (!user || !month || !cat || !amount) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    // 기존 같은 사용자+월+카테고리 찾기
     const queryRes = await fetch(
       `https://api.notion.com/v1/databases/${DB_ID}/query`,
       {
@@ -39,7 +40,6 @@ export default async function handler(req, res) {
     const existing = queryData.results?.[0];
 
     if (existing) {
-      // 이미 있으면 예산금액만 업데이트
       const updateRes = await fetch(
         `https://api.notion.com/v1/pages/${existing.id}`,
         {
@@ -50,9 +50,7 @@ export default async function handler(req, res) {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            properties: {
-              예산금액: { number: Number(amount) },
-            },
+            properties: { 예산금액: { number: Number(amount) } },
           }),
         },
       );
@@ -61,7 +59,6 @@ export default async function handler(req, res) {
         return res.status(updateRes.status).json({ error: updateData });
       return res.status(200).json({ id: existing.id, ok: true });
     } else {
-      // 없으면 새로 생성 — 제목 필드명이 빈 문자열("")임에 주의
       const createRes = await fetch("https://api.notion.com/v1/pages", {
         method: "POST",
         headers: {
@@ -82,7 +79,7 @@ export default async function handler(req, res) {
       });
       const createData = await createRes.json();
       if (!createRes.ok) {
-        console.error("Notion create error:", JSON.stringify(createData));
+        console.error("Notion budget save error:", JSON.stringify(createData));
         return res.status(createRes.status).json({ error: createData });
       }
       return res.status(200).json({ id: createData.id, ok: true });

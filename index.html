@@ -964,12 +964,18 @@
         renderHome();
       }
 
-      function addMem() {
+      async function addMem() {
         const v = document.getElementById("nickIn").value.trim();
         if (!v) return;
         if (!members.includes(v)) {
           members.push(v);
           lsSet("bg_members", members);
+          // Notion 멤버 DB에 등록
+          fetch("/api/member-save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nickname: v }),
+          }).catch(() => {});
         }
         document.getElementById("nickIn").value = "";
         selectM(v);
@@ -1001,6 +1007,12 @@
           '<optgroup label="── 수입 카테고리 ──">' +
           CI.map((c) => `<option>${c}</option>`).join("") +
           "</optgroup>";
+        // 시작 시 Notion에 멤버 등록 (처음 사용하는 경우 대비)
+        fetch("/api/member-save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nickname: me }),
+        }).catch(() => {});
         await loadMyTx();
       }
 
