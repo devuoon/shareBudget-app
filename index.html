@@ -476,6 +476,70 @@
         padding: 3px 8px;
         border-radius: 12px;
       }
+      /* 수정 모달 */
+      .modal-bg {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 100;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .modal-bg.on {
+        display: flex;
+      }
+      .modal {
+        background: #fff;
+        border-radius: 16px 16px 0 0;
+        padding: 20px 16px 32px;
+        width: 100%;
+        max-width: 480px;
+      }
+      .modal-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 18px;
+        color: #aaa;
+        padding: 2px 6px;
+      }
+      /* 필터 */
+      .filter-wrap {
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        margin-bottom: 10px;
+        scrollbar-width: none;
+      }
+      .filter-wrap::-webkit-scrollbar {
+        display: none;
+      }
+      .filter-btn {
+        background: none;
+        border: 1px solid #e2e2de;
+        border-radius: 20px;
+        padding: 4px 11px;
+        font-size: 11px;
+        cursor: pointer;
+        color: #888;
+        white-space: nowrap;
+        font-family: inherit;
+      }
+      .filter-btn.on {
+        background: #1a1a1a;
+        color: #fff;
+        border-color: #1a1a1a;
+      }
     </style>
   </head>
   <body>
@@ -614,6 +678,7 @@
               <span id="sIco">💾</span> Notion에 저장
             </button>
           </div>
+          <div id="txFilter" class="filter-wrap"></div>
           <div id="myList"></div>
         </div>
 
@@ -750,6 +815,53 @@
           <div id="roastOut"></div>
           <div id="roastCat"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- 수정 모달 -->
+    <div
+      id="editModal"
+      class="modal-bg"
+      onclick="if (event.target === this) closeEdit();"
+    >
+      <div class="modal">
+        <div class="modal-title">
+          <span>거래 수정</span>
+          <button class="modal-close" onclick="closeEdit()">✕</button>
+        </div>
+        <div class="ttgl">
+          <button class="tbtn E on" id="etE" onclick="setEditType('expense')">
+            지출
+          </button>
+          <button class="tbtn I" id="etI" onclick="setEditType('income')">
+            수입
+          </button>
+        </div>
+        <div class="g2">
+          <div>
+            <label>금액 (원)</label
+            ><input type="number" id="eAmt" placeholder="0" min="0" />
+          </div>
+          <div><label>날짜</label><input type="date" id="eDate" /></div>
+        </div>
+        <div class="g2">
+          <div>
+            <label>내용</label
+            ><input type="text" id="eDesc" placeholder="메모" />
+          </div>
+          <div>
+            <label>카테고리</label
+            ><select id="eCat" style="height: 36px"></select>
+          </div>
+        </div>
+        <button
+          class="btn"
+          id="eBtn"
+          onclick="submitEdit()"
+          style="margin-top: 4px"
+        >
+          <span id="eIco">✏️</span> 수정 저장
+        </button>
       </div>
     </div>
 
@@ -943,6 +1055,15 @@
       async function apiDeleteTx(notionId) {
         const res = await fetch(`/api/tx-delete?id=${notionId}`, {
           method: "DELETE",
+        });
+        return res.json();
+      }
+
+      async function apiUpdateTx(id, data) {
+        const res = await fetch("/api/tx-update", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, ...data }),
         });
         return res.json();
       }
@@ -1290,7 +1411,20 @@
       </div>`;
         } else document.getElementById("budOv").innerHTML = "";
 
-        const sorted = [...tx].sort((a, b) => b.date.localeCompare(a.date));
+        // 필터 버튼 렌더
+        const allCats = ["전체", ...new Set(tx.map((t) => t.cat))];
+        document.getElementById("txFilter").innerHTML = allCats
+          .map(
+            (c) =>
+              `<button class="filter-btn${c === filterCat ? " on" : ""}" onclick="setFilter('${c}')">${c}</button>`,
+          )
+          .join("");
+
+        const filtered =
+          filterCat === "전체" ? tx : tx.filter((t) => t.cat === filterCat);
+        const sorted = [...filtered].sort((a, b) =>
+          b.date.localeCompare(a.date),
+        );
         document.getElementById("myList").innerHTML = sorted.length
           ? sorted
               .map(
@@ -1302,6 +1436,7 @@
             <div class="txm">${t.date} · ${t.cat}</div>
           </div>
           <div class="txa ${t.type}">${t.type === "income" ? "+" : "-"}${fmt(t.amount)}</div>
+          <button class="del" style="color:#888;font-size:13px;margin-right:2px;" onclick="openEdit('${t.id}')">✏️</button>
           <button class="del" onclick="delTx('${t.id}')">✕</button>
         </div>`,
               )
@@ -1730,6 +1865,92 @@
         }
       }
 
+      function setFilter(cat) {
+        filterCat = cat;
+        render();
+      }
+
+      function openEdit(id) {
+        const t = myTx.find((x) => x.id === id);
+        if (!t) return;
+        editId = id;
+        editType = t.type;
+        document.getElementById("eAmt").value = t.amount;
+        document.getElementById("eDate").value = t.date;
+        document.getElementById("eDesc").value = t.desc;
+        // 카테고리 옵션
+        const cats = t.type === "expense" ? CE : CI;
+        document.getElementById("eCat").innerHTML = cats
+          .map((c) => `<option${c === t.cat ? " selected" : ""}>${c}</option>`)
+          .join("");
+        // 타입 버튼
+        document.getElementById("etE").className =
+          "tbtn E" + (t.type === "expense" ? " on" : "");
+        document.getElementById("etI").className =
+          "tbtn I" + (t.type === "income" ? " on" : "");
+        document.getElementById("editModal").classList.add("on");
+      }
+
+      function closeEdit() {
+        document.getElementById("editModal").classList.remove("on");
+        editId = null;
+      }
+
+      function setEditType(t) {
+        editType = t;
+        document.getElementById("etE").className =
+          "tbtn E" + (t === "expense" ? " on" : "");
+        document.getElementById("etI").className =
+          "tbtn I" + (t === "income" ? " on" : "");
+        document.getElementById("eCat").innerHTML = (t === "expense" ? CE : CI)
+          .map((c) => `<option>${c}</option>`)
+          .join("");
+      }
+
+      async function submitEdit() {
+        const amt = parseFloat(document.getElementById("eAmt").value);
+        const date = document.getElementById("eDate").value;
+        const cat = document.getElementById("eCat").value;
+        const desc = document.getElementById("eDesc").value.trim() || cat;
+        if (!amt || amt <= 0 || !date) {
+          toast("날짜와 금액을 입력해 주세요");
+          return;
+        }
+
+        const btn = document.getElementById("eBtn"),
+          ico = document.getElementById("eIco");
+        btn.disabled = true;
+        ico.innerHTML = '<span class="spin"></span>';
+
+        try {
+          await apiUpdateTx(editId, {
+            type: editType,
+            amount: amt,
+            date,
+            cat,
+            desc,
+          });
+          // 로컬 업데이트
+          const idx = myTx.findIndex((t) => t.id === editId);
+          if (idx >= 0)
+            myTx[idx] = {
+              ...myTx[idx],
+              type: editType,
+              amount: amt,
+              date,
+              cat,
+              desc,
+            };
+          render();
+          toast("✓ 수정됐어요");
+          closeEdit();
+        } catch (e) {
+          toast("수정 오류 발생");
+        }
+        btn.disabled = false;
+        ico.textContent = "✏️";
+      }
+
       function goHome() {
         me = "";
         myTx = [];
@@ -1744,11 +1965,10 @@
       }
 
       // ─── 초기화 ───────────────────────────────────────
-      (async () => {
-        await loadMembers(); // Notion에서 멤버 동기화
-        const last = lsGet("bg_last");
-        if (last) selectM(last);
-      })();
+      loadMembers();
+      renderHome();
+      const last = lsGet("bg_last");
+      if (last) selectM(last);
     </script>
   </body>
 </html>
